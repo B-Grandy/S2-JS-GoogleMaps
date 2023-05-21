@@ -1,0 +1,214 @@
+<html>
+
+<head>
+    <title>Meteorite Strikes</title>
+
+    <!-- Name: B.Grandy
+         Date: 2022-06-24 
+         Class: Javascript 2
+    -->
+
+    <style>
+        #map {
+            width: 80%;
+            height: 60%;
+            margin-top: 2%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #tableBody {
+            align-content: center;
+            text-align: center;
+        }
+    </style>
+
+</head>
+
+<body onload="ShowMeteorites();">
+    <!-- API KEY REMOVED FOR CREDENTIAL PURPOSES -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=ENTERKEYHERE-aaxs&callback=initMap&v=weekly"
+        defer></script>
+
+    <script type="text/JavaScript">
+    let meteorite_landings_url = "https://data.nasa.gov/resource/y77d-th95.json";
+    
+    var dataFilter = []; // Empty Array to use to filter data
+    let map = null;
+	var markers = [];
+    let requestObject = new XMLHttpRequest(); // Ajax Request - to retrieve data 
+    let data = null; // Global Data Variable (within script tags, no scope locks) - Ajax request once grab all the meteorite data and turn into json object store in data. Grab the ones we want filtered and display.
+    var contentString=''; // This is used to display the appropriate information based on the filter data for infoWindow!
+
+	function initMap() { // Iniitialize the map on the page. Very important function (if not here map will not work.)
+		if (map === null) { // First run
+			map = new google.maps.Map( 
+				document.getElementById("map"), 
+				{
+					zoom: 3.0,
+					center: {
+                        lat: 30, lng: 0 
+                    },
+				}
+			);
+		}
+	}
+	window.initMap = initMap; //Property on window - set it to the function. Within the <script src = portion) call back function. 
+//---------------------------------------------------------
+
+    function ShowMeteorites(){
+        //todo: this will kick of the ajax request for meteorites data
+        if(requestObject !== null) {
+            requestObject.open("GET", meteorite_landings_url, false);
+            requestObject.send(null);
+            data = JSON.parse(requestObject.responseText);
+        }
+        filterAll();
+    }
+
+//---------------------------------------------------------
+
+      function drawPin(location){
+        let marker = new google.maps.Marker({ //Object
+            position: {
+               lat: location.lat, //Latitude
+               lng: location.lng, //Longitude // Sets where the marker will be displayed on map
+            },
+            map: map,
+            title:'Click for more details.', // Hover to see "click for more details"
+        });
+        let infowindow = new google.maps.InfoWindow({ // Created to display window when clicked on.
+            content: contentString
+        }) 
+        google.maps.event.addListener(marker, 'click', function() {
+            infowindow.open(map, marker);  
+        });
+        markers.push(marker);
+    }   
+
+//---------------------------------------------------------
+
+    let markersShown = true;
+
+    function toggleMarkers(){
+        markersShown = !markersShown;
+        for (let i = 0; i < markers.length; ++i){
+            if(markersShown){
+                markers[i].setMap(map);
+            }
+            else {
+                markers[i].setMap(null);
+            }
+            //return;
+        }
+       // setTimeout(toggleMarkers, 1);
+    } 
+ 
+//---------------------------------------------------------
+
+    function filterAll() {
+        dataFilter = []; //Refreshes array everytime the filter is clicked by user
+        markersShown= true;
+        toggleMarkers();
+        document.getElementById("tablebody").innerHTML = "";
+
+        let minimumYear = document.getElementById("minYear").value;
+        let maximumYear = document.getElementById("maxYear").value;
+
+       for(var i = 0; i < data.length; i++) {
+             let meteorDate = new Date(data[i].year).getFullYear(); 
+
+            if (Number(minimumYear) <= meteorDate && Number(maximumYear) >= meteorDate ){ 
+                dataFilter.push(data[i]); 
+            }     
+       }  
+
+            for (var m= 0; m < dataFilter.length; m++){
+                let dateMeteor = new Date(dataFilter[m].year).getFullYear(); 
+
+                contentString = "Name: " + dataFilter[m].name + "<br>" + "Class: " + dataFilter[m].recclass 
+                + "<br>" + "Mass: " + dataFilter[m].mass + "<br>" + "Year: " + dateMeteor + "<br>" 
+                + "Latitude: " + dataFilter[m].reclat + "<br>" + "Longitude: " + dataFilter[m].reclong;
+
+                drawPin({lat:Number(dataFilter[m].reclat), lng:Number(dataFilter[m].reclong)});
+            }
+        tableFilter();
+        initMap();
+    } 
+
+//---------------------------------------------------------
+// Function to display the data when filtered data is created.
+
+    function tableFilter() {
+        for (let j = 0; j < dataFilter.length; j++){
+
+        let tblAll = document.getElementById("tablebody"); //Table Id 
+
+        let tblRow = document.createElement("tr"); // Table Row created for Columns
+
+        let column1 = document.createElement("td"); // Columns created 
+        let column2 = document.createElement("td");
+        let column3 = document.createElement("td");
+        let column4 = document.createElement("td");
+
+        column1.innerHTML = dataFilter[j].id; // Columns inner info will be related to meteorite properties.
+        column2.innerHTML = dataFilter[j].name;  
+        column3.innerHTML = new Date(dataFilter[j].year).getFullYear();
+        column4.innerHTML = dataFilter[j].recclass;  
+
+        tblRow.appendChild(column1); // Connect columns to the row
+        tblRow.appendChild(column2);
+        tblRow.appendChild(column3);
+        tblRow.appendChild(column4);
+
+        tblAll.appendChild(tblRow); // Complete table, appending to the parent.
+        }
+    }
+//---------------------------------------------------------
+    function saveFilteredList() {
+
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(dataFilter)], {
+            type: "text/json"
+        }));
+        a.setAttribute("download", "Nasa_Meteor_Filtered_List.json");
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+//---------------------------------------------------------   
+</script>
+
+    <div id="map"> <!-- div for map id (function initMap) --> </div>
+
+    <div id="selectors"
+        style="border: 1px solid black; width: 400px; margin: 5px auto; padding:10px; text-align: center;">
+        <input type="number" id="minYear" name="minYear" min="0" max="2023" value="0"> Min Year
+        <br><br>
+        <input type="number" id="maxYear" name="maxYear" min="0" max="2023" value="2023"> Max Year
+        <br><br>
+        <input type="button" id="filterBut" value="Filter" onclick="filterAll();">
+        <br><br>
+        <input type="button" id="saveBut" value="Save Filtered List" onclick="saveFilteredList();">
+    </div>
+
+    <div>
+        <div class="table" style="border: 1px solid black; width: 400px; margin: 5px auto; padding:10px;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th>Name</th>
+                        <th>Year</th>
+                        <th>Class</th>
+                    </tr>
+                </thead>
+                <tbody id="tablebody">
+                    <!-- Show meteorites function  has the row/columns creation.-->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+
+</html>
